@@ -11,6 +11,8 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.decomposition import TruncatedSVD
 from sklearn.multiclass import OneVsRestClassifier
 from sklearn.linear_model import LogisticRegression
+from sklearn.svm import SVC
+from sklearn.ensemble import RandomForestClassifier
 import gc
 import torch
 from tqdm import tqdm
@@ -45,7 +47,7 @@ class SentenceTransformerVectorizer(BaseEstimator, TransformerMixin):
         return np.vstack(batches)
 
 print("Loading data...")
-data = pd.read_csv('train.csv')
+data = pd.read_csv('train.csv', nrows = 20000)
 toxic_labels = ['toxic', 'severe_toxic', 'obscene', 'threat', 'insult', 'identity_hate']
 
 for label in toxic_labels:
@@ -66,6 +68,30 @@ combined_features = FeatureUnion([
     ('st', SentenceTransformerVectorizer(model_name="all-MiniLM-L6-v2", batch_size=16)),
     ('tfidf', TfidfVectorizer(max_features=5000, ngram_range=(1,3)))
 ])
+
+'''
+         RandomForestClassifier(
+             n_estimators=200,         
+             max_depth=15,                
+             max_features='sqrt',      
+             bootstrap=True,           
+             criterion='gini',         
+             random_state=42,
+             n_jobs=-1
+         )
+
+         SVC(
+             kernel='rbf',          
+             C=1.0,                
+             gamma='scale',       
+             degree=3,              
+             coef0=0.0,             
+             tol=1e-3,              
+             shrinking=True,      
+             probability=True,      
+             random_state=42
+         )
+'''
 
 print("Setting up model pipeline...")
 pipeline = Pipeline([
@@ -123,4 +149,5 @@ y_test_pred_tuned = tuned_predict_from_probs(test_probs, best_thresholds, labels
 test_subset_accuracy_tuned = compute_subset_accuracy(y_test, y_test_pred_tuned)
 
 print("Train accuracy:", train_subset_accuracy_tuned)
+print("Validation accuracy:", best_subset_accuracy)
 print("Test accuracy:", test_subset_accuracy_tuned)
