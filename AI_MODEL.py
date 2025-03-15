@@ -17,6 +17,9 @@ import gc
 import torch
 from tqdm import tqdm
 import itertools
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.metrics import confusion_matrix, precision_score, recall_score, f1_score
 
 
 if torch.backends.mps.is_available():  
@@ -98,7 +101,7 @@ pipeline = Pipeline([
     ('features', combined_features),
     ('svd', TruncatedSVD(n_components=600, random_state=42)),  
     ('clf', OneVsRestClassifier(
-         LogisticRegression(
+        LogisticRegression(
             penalty='l2',
             C=2.5,          
             solver='saga',
@@ -151,3 +154,47 @@ test_subset_accuracy_tuned = compute_subset_accuracy(y_test, y_test_pred_tuned)
 print("Train accuracy:", train_subset_accuracy_tuned)
 print("Validation accuracy:", best_subset_accuracy)
 print("Test accuracy:", test_subset_accuracy_tuned)
+  
+label_order = ['severe_toxic', 'identity_hate', 'threat', 'insult', 'obscene', 'toxic']
+
+def get_class(row, class_list):
+    for class_name in class_list:
+        if row[class_name] == 1:
+            return class_name
+    return None 
+
+index = y_test[toxic_labels].sum(axis=1) > 0
+test_data = y_test[index]
+pred_data = y_test_pred_tuned[index]
+
+y_test_class = test_data.apply(lambda row: get_class(row, label_order), axis=1)
+y_pred_class = []
+
+for i in range(len(pred_data)):
+    row_dict = {label: pred_data[i, j] for j, label in enumerate(labels)}
+    pred_class = get_class(row_dict, label_order)
+    if pred_class is None:
+        pred_class = label_order[-1]
+    y_pred_class.append(pred_class)
+
+class_mapping = {label: idx for idx, label in enumerate(label_order)}
+y_test_numeric = np.array([class_mapping[label] for label in y_test_class])
+y_pred_numeric = np.array([class_mapping[label] for label in y_pred_class])
+
+cm = confusion_matrix(y_test_numeric, y_pred_numeric)
+
+plt.figure(figsize=(10, 8))
+sns.heatmap(
+    cm,
+    annot=True,
+    fmt="d",
+    cmap="Blues",
+    xticklabels=[label.replace('_', ' ').title() for label in label_order],
+    yticklabels=[label.replace('_', ' ').title() for label in label_order]
+)
+
+plt.xlabel("Predicted")
+plt.ylabel("True")
+plt.title("Confusion Matrix")
+plt.savefig('matrix.png')
+plt.show()                                                                               

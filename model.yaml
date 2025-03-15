@@ -1,0 +1,23 @@
+program: AI_MODEL.py
+method: bayes
+metric:
+  name: validation_accuracy
+  goal: maximize
+parameters:
+  # LogisticRegression parameters only
+  penalty:
+    values: ['l1', 'l2', 'elasticnet']
+  C:
+    min: 0.1
+    max: 10.0
+    distribution: log_uniform
+  solver:
+    values: ['saga', 'liblinear']
+  max_iter:
+    values: [500, 1000, 2000]
+  tol:
+    values: [1e-5, 1e-4, 1e-3]
+  random_state:
+    value: 42  # Fixed for reproducibility
+  n_jobs:
+    value: -1  # Use all cores
