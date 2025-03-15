@@ -17,9 +17,12 @@ import gc
 import torch
 from tqdm import tqdm
 import itertools
+import wandb 
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.metrics import confusion_matrix, precision_score, recall_score, f1_score
+
+wandb.init(project="toxic-comment-classifier")
 
 
 if torch.backends.mps.is_available():  
@@ -101,14 +104,14 @@ pipeline = Pipeline([
     ('features', combined_features),
     ('svd', TruncatedSVD(n_components=600, random_state=42)),  
     ('clf', OneVsRestClassifier(
-        LogisticRegression(
-            penalty='l2',
-            C=2.5,          
-            solver='saga',
-            max_iter=1000,
-            tol=1e-4,
-            random_state=42,
-            n_jobs=-1
+         LogisticRegression(
+            penalty=wandb.config.get('penalty', 'l2'),
+            C=wandb.config.get('C', 2.5),          
+            solver=wandb.config.get('solver', 'saga'),
+            max_iter=wandb.config.get('max_iter', 1000),
+            tol=wandb.config.get('tol', 1e-4),
+            random_state=wandb.config.get('random_state', 42),
+            n_jobs=wandb.config.get('n_jobs', -1)
          )
     ))
 ])
@@ -154,7 +157,16 @@ test_subset_accuracy_tuned = compute_subset_accuracy(y_test, y_test_pred_tuned)
 print("Train accuracy:", train_subset_accuracy_tuned)
 print("Validation accuracy:", best_subset_accuracy)
 print("Test accuracy:", test_subset_accuracy_tuned)
-  
+
+wandb.log({
+    "train_accuracy": train_subset_accuracy_tuned,
+    "validation_accuracy": best_subset_accuracy,
+    "test_accuracy": test_subset_accuracy_tuned,
+    "best_thresholds": {k: float(v) for k, v in best_thresholds.items()}  
+})
+
+wandb.finish()
+
 label_order = ['severe_toxic', 'identity_hate', 'threat', 'insult', 'obscene', 'toxic']
 
 def get_class(row, class_list):
@@ -197,4 +209,4 @@ plt.xlabel("Predicted")
 plt.ylabel("True")
 plt.title("Confusion Matrix")
 plt.savefig('matrix.png')
-plt.show()                                                                               
+plt.show()      
